@@ -1,31 +1,38 @@
-#include <unistd.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-int main(int argc, char* argv[])
+int main()
 {
-    int fds[2];
-    char *myfifo = "/tmp/server";
-    char *myfifo2 = "/tmp/client";
+   int client_to_server;
+   char *myfifo = "/tmp/client_to_server_fifo";
 
-    mkfifo(myfifo2,0666);
-    fds[0]=open(myfifo,O_RDONLY);
-    fds[1]=open(myfifo2,O_WRONLY);
+   int server_to_client;
+   char *myfifo2 = "/tmp/server_to_client_fifo";
 
-    char tab[BUFSIZ];
-    memset(tab, 0, sizeof(tab));
+   char str[BUFSIZ];
+   printf("Input message to serwer: ");
+   scanf("%s", str);
 
-    write(fds[1],"klient",6);
-    perror("Write:"); //Very crude error check
-    read(fds[0],tab,sizeof(tab));
-    perror("Read:"); // Very crude error check
 
-    printf("Odebrano od serwera: %s\n",tab);
+   /* write str to the FIFO */
+   client_to_server = open(myfifo, O_WRONLY);
+   server_to_client = open(myfifo2, O_RDONLY);
+   write(client_to_server, str, sizeof(str));
 
-    close(fds[0]);
-    close(fds[1]);
-    unlink(myfifo2);
-    return 0;
+   perror("Write:"); //Very crude error check
+
+   read(server_to_client,str,sizeof(str));
+
+   perror("Read:"); // Very crude error check
+
+   printf("...received from the server: %s\n",str);
+   close(client_to_server);
+   close(server_to_client);
+
+   /* remove the FIFO */
+
+   return 0;
 }

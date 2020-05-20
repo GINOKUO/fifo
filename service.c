@@ -1,55 +1,54 @@
-#include <unistd.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
 
-int main(int argc, char* argv[])
+int main()
 {
-    int fds[2];
-    char tab[BUFSIZ];
-    int fd, n;
+   int client_to_server;
+   char *myfifo = "/tmp/client_to_server_fifo";
 
-    char *myfifo = "/tmp/server";
-    char *myfifo2 = "/tmp/client";
+   int server_to_client;
+   char *myfifo2 = "/tmp/server_to_client_fifo";
 
-    pipe(fds);
-    mkfifo(myfifo,0666);
+   char buf[BUFSIZ];
 
-    while(1)
-    {
-        fds[0]=open(myfifo2,O_RDONLY);
-        fds[1]=open(myfifo,O_WRONLY);
+   /* create the FIFO (named pipe) */
+   mkfifo(myfifo, 0666);
+   mkfifo(myfifo2, 0666);
 
-        read(fds[0],tab,BUFSIZ);
+   /* open, read, and display the message from the FIFO */
+   client_to_server = open(myfifo, O_RDONLY);
+   server_to_client = open(myfifo2, O_WRONLY);
 
-        if (strcmp("klient",tab)==0) {
-            printf("Od klienta: %s\n",tab);
-            fd=open(tab,O_WRONLY);
+   printf("Server ON.\n");
 
-            if(fork()==0)
-            {
-                dup2(fds[1],1);
-                close(fds[1]);
-                execlp("ls","ls","-l",NULL);
-                close(fds[0]);
-                close(fds[1]);
-            }
-            else
-            {
-                dup2(fds[0],0);
-                n = read(fds[0],tab,BUFSIZ);
-                write(fd,tab,n);
-                close(fds[0]);
-                close(fds[1]);
-            }
-        }
-        memset(tab, 0, sizeof(tab));
-        close(fd);
-        close(fds[0]);
-        close(fds[1]);
-    }
+   while (1)
+   {
+      read(client_to_server, buf, BUFSIZ);
 
-    unlink(myfifo);
-    return 0;
+      if (strcmp("exit",buf)==0)
+      {
+         printf("Server OFF.\n");
+         break;
+      }
+
+      else if (strcmp("",buf)!=0)
+      {
+         printf("Received: %s\n", buf);
+         printf("Sending back...\n");
+         write(server_to_client,buf,BUFSIZ);
+      }
+
+      /* clean buf from any data */
+      memset(buf, 0, sizeof(buf));
+   }
+
+   close(client_to_server);
+   close(server_to_client);
+
+   unlink(myfifo);
+   unlink(myfifo2);
+   return 0;
 }
